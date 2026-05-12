@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "wordpress-mcp": {
+      "type": "http",
+      "url": "https://centrebethel.org/wp-json/wp/v2/wpmcp/streamable",
+      "headers": {
+        "Authorization": "${WORDPRESS_MCP_TOKEN}"
+      }
+    }
+  }
+}
