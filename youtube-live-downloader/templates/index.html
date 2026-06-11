@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Téléchargeur de lives YouTube</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>📺 Téléchargeur de lives YouTube</h1>
+      <p class="subtitle">Collez un lien YouTube (live en cours ou terminé) pour le télécharger.</p>
+    </header>
+
+    <section class="card">
+      <label for="url">Lien YouTube</label>
+      <div class="row">
+        <input type="url" id="url" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" />
+        <button id="check-btn" class="secondary">Vérifier</button>
+      </div>
+
+      <div id="info" class="info hidden"></div>
+
+      <div class="options">
+        <div class="field">
+          <label for="quality">Qualité</label>
+          <select id="quality">
+            <option value="best">Meilleure disponible</option>
+            <option value="1080">1080p</option>
+            <option value="720">720p</option>
+            <option value="480">480p</option>
+            <option value="audio">Audio seulement (MP3)</option>
+          </select>
+        </div>
+        <div class="field checkbox">
+          <label>
+            <input type="checkbox" id="live-from-start" checked />
+            Live : reprendre depuis le début
+          </label>
+        </div>
+      </div>
+
+      <button id="download-btn" class="primary">⬇ Télécharger</button>
+      <p id="error" class="error hidden"></p>
+    </section>
+
+    <section class="card jobs">
+      <h2>Téléchargements</h2>
+      <ul id="jobs-list"><li class="empty">Aucun téléchargement pour le moment.</li></ul>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
