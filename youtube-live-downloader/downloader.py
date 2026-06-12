@@ -27,6 +27,49 @@ _jobs: dict[str, dict[str, Any]] = {}
 _jobs_lock = threading.Lock()
 
 
+def _common_opts() -> dict[str, Any]:
+    """Options yt-dlp communes à toutes les requêtes.
+
+    Par défaut yt-dlp valide les certificats avec le magasin de `certifi`.
+    Derrière un proxy qui inspecte le trafic TLS (réseau d'entreprise, etc.),
+    le certificat racine du proxy se trouve dans le magasin *système* et non
+    dans `certifi` : la connexion échoue alors avec « self-signed certificate
+    in certificate chain ».
+
+    Si l'environnement fournit un bundle CA explicite (`SSL_CERT_FILE` ou
+    `REQUESTS_CA_BUNDLE`), ou si `YTDL_SYSTEM_CERTS` est défini, on demande à
+    yt-dlp d'utiliser le magasin système (option `no-certifi`), qui respecte
+    ces variables. La validation des certificats reste **active**.
+    """
+    opts: dict[str, Any] = {"quiet": True, "no_warnings": True}
+    use_system_certs = bool(
+        os.environ.get("YTDL_SYSTEM_CERTS")
+        or os.environ.get("SSL_CERT_FILE")
+        or os.environ.get("REQUESTS_CA_BUNDLE")
+    )
+    if use_system_certs:
+        opts["compat_opts"] = {"no-certifi"}
+
+    # Cookies : indispensables quand YouTube réclame une connexion
+    # (« Sign in to confirm you're not a bot », vidéos avec restriction d'âge,
+    # lives privés/réservés aux membres, ou IP fortement sollicitée).
+    cookies_file = os.environ.get("YTDL_COOKIES_FILE")
+    if cookies_file:
+        opts["cookiefile"] = cookies_file
+    cookies_browser = os.environ.get("YTDL_COOKIES_FROM_BROWSER")
+    if cookies_browser:
+        # Format accepté : "chrome", "firefox", "edge", "brave", "safari"...
+        opts["cookiesfrombrowser"] = (cookies_browser,)
+
+    # Permet de forcer un « player client » YouTube (android, ios, tv, web...)
+    # utile pour contourner certaines erreurs 403 selon le réseau.
+    player_client = os.environ.get("YTDL_PLAYER_CLIENT")
+    if player_client:
+        opts["extractor_args"] = {"youtube": {"player_client": [player_client]}}
+
+    return opts
+
+
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
@@ -65,7 +108,7 @@ QUALITY_FORMATS = {
 
 def fetch_info(url: str) -> dict[str, Any]:
     """Récupère les métadonnées d'une URL sans la télécharger."""
-    opts = {"quiet": True, "no_warnings": True, "skip_download": True}
+    opts = {**_common_opts(), "skip_download": True}
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
     return {
@@ -108,12 +151,11 @@ def _run_download(job_id: str, url: str, quality: str, live_from_start: bool) ->
     outtmpl = os.path.join(DOWNLOAD_DIR, "%(title)s [%(id)s].%(ext)s")
 
     opts: dict[str, Any] = {
+        **_common_opts(),
         "format": QUALITY_FORMATS.get(quality, QUALITY_FORMATS["best"]),
         "outtmpl": outtmpl,
         "progress_hooks": [_make_progress_hook(job_id)],
         "noprogress": True,
-        "quiet": True,
-        "no_warnings": True,
         # Permet de reprendre un live depuis le début plutôt qu'au point
         # courant de diffusion.
         "live_from_start": live_from_start,
