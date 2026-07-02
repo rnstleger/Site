@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Préloop — Faites ceci en mémoire de moi</title>
+<style>
+  :root {
+    --bg-deep: #150a0d;
+    --bg-mid: #2b1216;
+    --gold: #c9a227;
+    --gold-soft: #e0c56e;
+    --cream: #f5efe0;
+    --cream-dim: rgba(245, 239, 224, 0.75);
+    --wine: #7a2c3a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-deep);
+    font-family: Georgia, 'Times New Roman', 'Palatino Linotype', serif;
+    color: var(--cream);
+    cursor: none;
+  }
+
+  body.paused, body.show-cursor { cursor: default; }
+
+  .stage {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 120% 90% at 50% 110%, rgba(122, 44, 58, 0.35), transparent 60%),
+      radial-gradient(ellipse 100% 80% at 50% -20%, rgba(201, 162, 39, 0.08), transparent 55%),
+      linear-gradient(170deg, var(--bg-mid) 0%, var(--bg-deep) 70%);
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 6vh 10vw;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 1.8s ease, visibility 1.8s;
+  }
+
+  .slide.active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .section-label {
+    font-size: clamp(0.7rem, 1.3vw, 1.05rem);
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 5vh;
+    opacity: 0.85;
+  }
+
+  .ornament {
+    color: var(--gold);
+    font-size: clamp(1rem, 2vw, 1.6rem);
+    margin: 4vh 0;
+    letter-spacing: 1em;
+    padding-left: 1em; /* compense le letter-spacing du dernier caractère */
+    opacity: 0.8;
+  }
+
+  .verse {
+    font-size: clamp(1.6rem, 3.8vw, 3.4rem);
+    line-height: 1.45;
+    font-style: italic;
+    max-width: 28ch;
+    text-wrap: balance;
+  }
+
+  .verse::before { content: "« "; color: var(--gold-soft); }
+  .verse::after  { content: " »"; color: var(--gold-soft); }
+
+  .reference {
+    margin-top: 4.5vh;
+    font-size: clamp(1rem, 1.8vw, 1.5rem);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold-soft);
+  }
+
+  .statement {
+    font-size: clamp(1.7rem, 4vw, 3.6rem);
+    line-height: 1.5;
+    max-width: 26ch;
+    text-wrap: balance;
+  }
+
+  .egw-quote {
+    font-size: clamp(1.5rem, 3.4vw, 3rem);
+    line-height: 1.5;
+    font-style: italic;
+    max-width: 30ch;
+    text-wrap: balance;
+    color: var(--cream);
+  }
+
+  .egw-quote::before { content: "« "; color: var(--gold-soft); }
+  .egw-quote::after  { content: " »"; color: var(--gold-soft); }
+
+  .author {
+    margin-top: 4.5vh;
+    font-size: clamp(0.95rem, 1.7vw, 1.4rem);
+    letter-spacing: 0.2em;
+    color: var(--cream-dim);
+  }
+
+  .author em { color: var(--gold-soft); font-style: normal; }
+
+  .moment-title {
+    font-size: clamp(1.3rem, 2.6vw, 2.2rem);
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 4vh;
+  }
+
+  .moment-text {
+    font-size: clamp(1.5rem, 3.2vw, 2.8rem);
+    line-height: 1.5;
+    font-style: italic;
+    max-width: 30ch;
+    color: var(--cream-dim);
+    text-wrap: balance;
+  }
+
+  .main-title {
+    font-size: clamp(2.4rem, 6.5vw, 5.8rem);
+    letter-spacing: 0.12em;
+    line-height: 1.25;
+    text-transform: uppercase;
+    color: var(--cream);
+    max-width: 18ch;
+    text-wrap: balance;
+    text-shadow: 0 0 60px rgba(201, 162, 39, 0.25);
+  }
+
+  .sub-verse {
+    margin-top: 5vh;
+    font-size: clamp(1.1rem, 2.2vw, 1.9rem);
+    line-height: 1.55;
+    font-style: italic;
+    max-width: 42ch;
+    color: var(--cream-dim);
+    text-wrap: balance;
+  }
+
+  .sub-verse::before { content: "« "; color: var(--gold-soft); }
+  .sub-verse::after  { content: " »"; color: var(--gold-soft); }
+
+  .closing {
+    margin-top: 4.5vh;
+    font-size: clamp(1rem, 1.9vw, 1.6rem);
+    line-height: 1.6;
+    max-width: 46ch;
+    color: var(--cream-dim);
+    text-wrap: balance;
+  }
+
+  .progress {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    width: 0%;
+    background: linear-gradient(90deg, var(--wine), var(--gold));
+    opacity: 0.55;
+    transition: width 0.3s linear;
+  }
+
+  .counter {
+    position: fixed;
+    bottom: 2.2vh;
+    right: 2.5vw;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    color: rgba(245, 239, 224, 0.25);
+    font-family: Georgia, serif;
+  }
+
+  .pause-badge {
+    position: fixed;
+    top: 2.2vh;
+    right: 2.5vw;
+    font-size: 0.8rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid rgba(201, 162, 39, 0.5);
+    padding: 0.5em 1.2em;
+    border-radius: 2em;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  body.paused .pause-badge { opacity: 0.9; }
+
+  .hint {
+    position: fixed;
+    bottom: 2.2vh;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    color: rgba(245, 239, 224, 0.45);
+    transition: opacity 1s;
+    white-space: nowrap;
+  }
+
+  .hint.hidden { opacity: 0; }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+
+  <!-- ================= SECTION 1 — Invitation à l'adoration (1–5) ================= -->
+
+  <section class="slide" data-duration="18">
+    <div class="main-title">Faites ceci en mémoire de moi</div>
+    <div class="ornament">✦</div>
+    <div class="sub-verse">Toutes les fois que vous mangez ce pain et que vous buvez cette coupe, vous annoncez la mort du Seigneur, jusqu'à ce qu'il vienne.</div>
+    <div class="reference">1 Corinthiens 11:26</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Invitation à l'adoration</div>
+    <div class="verse">Arrêtez, et sachez que je suis Dieu.</div>
+    <div class="reference">Psaume 46:10</div>
+    <div class="ornament">✦</div>
+    <div class="moment-text">Prenons quelques instants pour préparer nos cœurs.</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Invitation à l'adoration</div>
+    <div class="verse">Approchons-nous donc avec assurance du trône de la grâce.</div>
+    <div class="reference">Hébreux 4:16</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Invitation à l'adoration</div>
+    <div class="egw-quote">La Sainte Cène est un rendez-vous d'amour entre le Sauveur et son peuple.</div>
+    <div class="author">— Ellen G. White, <em>Jésus-Christ</em></div>
+  </section>
+
+  <section class="slide" data-duration="25">
+    <div class="moment-title">Temps de silence</div>
+    <div class="ornament">✦</div>
+    <div class="moment-text">Parlez à Dieu dans votre cœur.</div>
+  </section>
+
+  <!-- ================= SECTION 2 — Le sacrifice de Jésus (6–12) ================= -->
+
+  <section class="slide">
+    <div class="section-label">Le sacrifice de Jésus</div>
+    <div class="verse">Car Dieu a tant aimé le monde qu'il a donné son Fils unique...</div>
+    <div class="reference">Jean 3:16</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Le sacrifice de Jésus</div>
+    <div class="verse">Il était blessé pour nos péchés...</div>
+    <div class="reference">Ésaïe 53:5</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Le sacrifice de Jésus</div>
+    <div class="verse">Voici l'Agneau de Dieu qui ôte le péché du monde.</div>
+    <div class="reference">Jean 1:29</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Le sacrifice de Jésus</div>
+    <div class="statement">La croix révèle jusqu'où Dieu est prêt à aller pour sauver l'humanité.</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Le sacrifice de Jésus</div>
+    <div class="verse">Ayant aimé les siens... il les aima jusqu'à la fin.</div>
+    <div class="reference">Jean 13:1</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Le sacrifice de Jésus</div>
+    <div class="egw-quote">Le sacrifice de Jésus est le fondement de notre espérance.</div>
+    <div class="author">— Ellen G. White</div>
+  </section>
+
+  <section class="slide" data-duration="20">
+    <div class="moment-title">Hymne</div>
+    <div class="ornament">✦</div>
+    <div class="moment-text">« À la croix, à la croix, c'est là que j'ai vu la lumière... »</div>
+  </section>
+
+  <!-- ================= SECTION 3 — Le service d'humilité (13–17) ================= -->
+
+  <section class="slide">
+    <div class="section-label">Le service d'humilité</div>
+    <div class="verse">Si donc je vous ai lavé les pieds... vous devez aussi vous laver les pieds les uns aux autres.</div>
+    <div class="reference">Jean 13:14</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Le service d'humilité</div>
+    <div class="statement">Le plus grand s'est fait serviteur.</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Le service d'humilité</div>
+    <div class="statement">L'humilité ouvre toujours la porte à la communion.</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Le service d'humilité</div>
+    <div class="egw-quote">À la table du Seigneur, il n'y a ni premier ni dernier. Nous sommes tous sauvés par la grâce.</div>
+  </section>
+
+  <section class="slide" data-duration="25">
+    <div class="moment-title">Temps de réflexion</div>
+    <div class="ornament">✦</div>
+    <div class="moment-text">Qui Dieu m'appelle-t-il à aimer davantage ?</div>
+  </section>
+
+  <!-- ================= SECTION 4 — Examinez-vous (18–23) ================= -->
+
+  <section class="slide">
+    <div class="section-label">Examinez-vous</div>
+    <div class="verse">Que chacun donc s'éprouve soi-même...</div>
+    <div class="reference">1 Corinthiens 11:28</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Examinez-vous</div>
+    <div class="verse">Sonde-moi, ô Dieu, et connais mon cœur.</div>
+    <div class="reference">Psaume 139:23-24</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Examinez-vous</div>
+    <div class="verse">Si nous confessons nos péchés, il est fidèle et juste pour nous les pardonner.</div>
+    <div class="reference">1 Jean 1:9</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Examinez-vous</div>
+    <div class="statement">Le pardon reçu devient un pardon offert.</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Examinez-vous</div>
+    <div class="egw-quote">Personne n'est exclu de la grâce de Dieu lorsqu'il vient avec repentance.</div>
+    <div class="author">— Ellen G. White</div>
+  </section>
+
+  <section class="slide" data-duration="20">
+    <div class="moment-title">Hymne</div>
+    <div class="ornament">✦</div>
+    <div class="moment-text">« Tel que je suis, sans rien à moi, sinon ton sang versé pour moi... »</div>
+  </section>
+
+  <!-- ================= SECTION 5 — Faites ceci en mémoire de moi (24–27) ================= -->
+
+  <section class="slide">
+    <div class="section-label">Faites ceci en mémoire de moi</div>
+    <div class="verse">Ceci est mon corps, qui est donné pour vous.</div>
+    <div class="reference">Luc 22:19</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Faites ceci en mémoire de moi</div>
+    <div class="verse">Cette coupe est la nouvelle alliance en mon sang.</div>
+    <div class="reference">Luc 22:20</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Faites ceci en mémoire de moi</div>
+    <div class="statement">Chaque Sainte Cène renouvelle notre alliance avec Jésus-Christ.</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Faites ceci en mémoire de moi</div>
+    <div class="egw-quote">Ce service annonce la mort du Sauveur et fortifie la foi de ceux qui attendent son retour.</div>
+    <div class="author">— Ellen G. White</div>
+  </section>
+
+  <!-- ================= SECTION 6 — Jusqu'à ce qu'il revienne (28–30) ================= -->
+
+  <section class="slide">
+    <div class="section-label">Jusqu'à ce qu'il revienne</div>
+    <div class="verse">Je reviendrai, et je vous prendrai avec moi.</div>
+    <div class="reference">Jean 14:3</div>
+  </section>
+
+  <section class="slide">
+    <div class="section-label">Jusqu'à ce qu'il revienne</div>
+    <div class="verse">Heureux ceux qui sont appelés au festin des noces de l'Agneau !</div>
+    <div class="reference">Apocalypse 19:9</div>
+  </section>
+
+  <section class="slide" data-duration="22">
+    <div class="main-title">Bienvenue à la table du Seigneur</div>
+    <div class="ornament">✦</div>
+    <div class="sub-verse">Toutes les fois que vous mangez ce pain et que vous buvez cette coupe, vous annoncez la mort du Seigneur, jusqu'à ce qu'il vienne.</div>
+    <div class="reference">1 Corinthiens 11:26</div>
+    <div class="closing">Que cette célébration nous rapproche de Jésus-Christ et renouvelle notre espérance en son prochain retour.</div>
+  </section>
+
+</div>
+
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter"></div>
+<div class="pause-badge">Pause</div>
+<div class="hint" id="hint">← → naviguer &nbsp;·&nbsp; Espace pause &nbsp;·&nbsp; F plein écran</div>
+
+<script>
+  const DEFAULT_DURATION = 15; // secondes par diapositive
+
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const progress = document.getElementById('progress');
+  const counter = document.getElementById('counter');
+  const hint = document.getElementById('hint');
+
+  let current = 0;
+  let paused = false;
+  let elapsed = 0;
+  let lastTick = null;
+  let cursorTimer = null;
+
+  function slideDuration(i) {
+    return (parseFloat(slides[i].dataset.duration) || DEFAULT_DURATION) * 1000;
+  }
+
+  function show(i) {
+    slides[current].classList.remove('active');
+    current = (i + slides.length) % slides.length;
+    slides[current].classList.add('active');
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+    elapsed = 0;
+  }
+
+  function tick(now) {
+    if (lastTick === null) lastTick = now;
+    const delta = now - lastTick;
+    lastTick = now;
+
+    if (!paused) {
+      elapsed += delta;
+      const duration = slideDuration(current);
+      if (elapsed >= duration) {
+        show(current + 1);
+      }
+      progress.style.width = Math.min(100, (elapsed / duration) * 100) + '%';
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function togglePause() {
+    paused = !paused;
+    document.body.classList.toggle('paused', paused);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') show(current + 1);
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') show(current - 1);
+    else if (e.key === ' ' || e.key.toLowerCase() === 'p') { e.preventDefault(); togglePause(); }
+    else if (e.key.toLowerCase() === 'f') {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    }
+    else if (e.key === 'Home') show(0);
+  });
+
+  document.addEventListener('click', () => show(current + 1));
+
+  document.addEventListener('mousemove', () => {
+    document.body.classList.add('show-cursor');
+    clearTimeout(cursorTimer);
+    cursorTimer = setTimeout(() => document.body.classList.remove('show-cursor'), 2500);
+  });
+
+  slides[0].classList.add('active');
+  counter.textContent = '1 / ' + slides.length;
+  setTimeout(() => hint.classList.add('hidden'), 8000);
+  requestAnimationFrame(tick);
+</script>
+
+</body>
+</html>
